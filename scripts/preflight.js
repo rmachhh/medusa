@@ -1,7 +1,43 @@
-// Temporary deployment diagnostic. Prints DNS and TCP reachability for the
-// database host before Medusa starts. Remove once the connection is verified.
+// Temporary deployment diagnostic. Prints DNS, TCP, and PostgreSQL handshake
+// details before Medusa starts. Remove once the connection is verified.
 const dns = require("node:dns").promises
 const net = require("node:net")
+
+async function probeTcp(host, port) {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host, port })
+    const done = (message) => {
+      socket.destroy()
+      resolve(message)
+    }
+    socket.setTimeout(5000)
+    socket.once("connect", () => done("connected"))
+    socket.once("timeout", () => done("timeout"))
+    socket.once("error", (error) => done(`error code=${error.code}`))
+  })
+}
+
+async function probePostgres(raw) {
+  const { Client } = require("pg")
+  const client = new Client({
+    connectionString: raw,
+    connectionTimeoutMillis: 8000,
+    query_timeout: 8000,
+  })
+  try {
+    await client.connect()
+    const result = await client.query(
+      "select current_database() as db, current_user as usr, version() as v"
+    )
+    const row = result.rows[0]
+    console.log(`[preflight] pg=connected db=${row.db} user=${row.usr}`)
+    console.log(`[preflight] postgres=${row.v.split(" ").slice(0, 2).join(" ")}`)
+  } catch (error) {
+    console.log(`[preflight] pg-error code=${error.code} message=${error.message}`)
+  } finally {
+    await client.end().catch(() => {})
+  }
+}
 
 async function main() {
   const raw = process.env.DATABASE_URL
@@ -14,6 +50,7 @@ async function main() {
   const host = url.hostname
   const port = Number(url.port || 5432)
   console.log(`[preflight] host=${host} port=${port} user=${url.username}`)
+  console.log(`[preflight] params=${url.search || "none"}`)
 
   try {
     const addresses = await dns.lookup(host, { all: true })
@@ -23,18 +60,8 @@ async function main() {
     return
   }
 
-  await new Promise((resolve) => {
-    const socket = net.connect({ host, port })
-    const done = (message) => {
-      console.log(`[preflight] tcp=${message}`)
-      socket.destroy()
-      resolve()
-    }
-    socket.setTimeout(5000)
-    socket.once("connect", () => done("connected"))
-    socket.once("timeout", () => done("timeout"))
-    socket.once("error", (error) => done(`error code=${error.code}`))
-  })
+  console.log(`[preflight] tcp=${await probeTcp(host, port)}`)
+  await probePostgres(raw)
 }
 
 main().catch((error) => console.log(`[preflight] failed=${error.message}`))
