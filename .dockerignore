@@ -1,0 +1,12 @@
+**/node_modules
+**/.medusa
+**/.turbo
+**/dist
+**/build
+**/.next
+.git
+.github
+.DS_Store
+**/.env
+**/.env.*
+!**/.env.template
