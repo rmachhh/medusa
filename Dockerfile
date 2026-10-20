@@ -18,4 +18,4 @@ WORKDIR /app
 COPY --from=builder /app/apps/backend/.medusa/server ./
 RUN npm install --omit=dev --no-audit --no-fund
 EXPOSE 9000
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "start:prod"]
