@@ -39,30 +39,6 @@ async function probePostgres(raw) {
   }
 }
 
-async function probeMedusaKnex(raw) {
-  try {
-    const { createPgConnection } = require("@medusajs/utils/dist/modules-sdk/create-pg-connection.js")
-    const db = createPgConnection({
-      clientUrl: raw,
-      pool: { min: 0, max: 1, propagateCreateError: true },
-    })
-    const started = Date.now()
-    try {
-      const result = await Promise.race([
-        db.raw("select 1 as ok"),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("timeout")), 12000)
-        ),
-      ])
-      console.log(`[preflight] medusa-knex=ok ${Date.now() - started}ms rows=${JSON.stringify(result.rows)}`)
-    } finally {
-      await db.destroy().catch(() => {})
-    }
-  } catch (error) {
-    console.log(`[preflight] medusa-knex-error code=${error.code} message=${error.message}`)
-  }
-}
-
 async function main() {
   const raw = process.env.DATABASE_URL
   if (!raw) {
@@ -86,7 +62,6 @@ async function main() {
 
   console.log(`[preflight] tcp=${await probeTcp(host, port)}`)
   await probePostgres(raw)
-  await probeMedusaKnex(raw)
 }
 
 main().catch((error) => console.log(`[preflight] failed=${error.message}`))
