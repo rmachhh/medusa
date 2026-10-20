@@ -3,9 +3,10 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 FROM base AS deps
+ENV NODE_ENV=development
 COPY package.json package-lock.json ./
 COPY apps/backend/package.json apps/backend/package.json
-RUN npm ci
+RUN npm ci --include=dev
 
 FROM deps AS builder
 COPY . .
