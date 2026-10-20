@@ -17,6 +17,13 @@ module.exports = defineConfig({
       | "shared"
       | "worker"
       | "server") || "shared",
+    // Framework forces `secure: true` in production, which drops the session
+    // cookie on plain HTTP origins. Set COOKIE_SECURE=true once the app is
+    // served over HTTPS.
+    cookieOptions: {
+      secure: process.env.COOKIE_SECURE === "true",
+      sameSite: "lax" as const,
+    },
     http: {
       storeCors: process.env.STORE_CORS!,
       adminCors: process.env.ADMIN_CORS!,
