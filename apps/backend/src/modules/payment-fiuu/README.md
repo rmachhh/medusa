@@ -15,6 +15,7 @@ done) and set these environment variables:
 | `FIUU_SECRET_KEY` | yes | Secret Key (used to verify `skey` responses) |
 | `FIUU_SANDBOX` | no | `true` uses `sandbox-payment.fiuu.com` |
 | `FIUU_EXTENDED_VCODE` | no | `true` if "Use extended format for Verify Payment" is enabled in the portal |
+| `FIUU_DEV_AMOUNT` | no | Override the amount sent to Fiuu, e.g. `1.00`. Defaults to `1.00` when the merchant ID ends with `_Dev`. |
 | `FIUU_CURRENCY` | no | Default currency, defaults to `MYR` |
 | `FIUU_COUNTRY` | no | Default buyer country, defaults to `MY` |
 | `FIUU_CHANNEL` | no | Preselect a channel, e.g. `FPX_MB2U` |

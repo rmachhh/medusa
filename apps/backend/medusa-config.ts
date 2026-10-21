@@ -18,6 +18,12 @@ const fiuuProvider = {
     merchantId: process.env.FIUU_MERCHANT_ID,
     verifyKey: process.env.FIUU_VERIFY_KEY,
     secretKey: process.env.FIUU_SECRET_KEY,
+    // Dev merchant IDs end with _Dev. Charge 1.00 for UAT unless overridden.
+    devAmount:
+      process.env.FIUU_DEV_AMOUNT ??
+      (String(process.env.FIUU_MERCHANT_ID || "").endsWith("_Dev")
+        ? "1.00"
+        : undefined),
     sandbox: process.env.FIUU_SANDBOX === "true",
     extendedVcode: process.env.FIUU_EXTENDED_VCODE === "true",
     currency: process.env.FIUU_CURRENCY || "MYR",

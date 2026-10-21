@@ -7,6 +7,7 @@ import {
 import type {
   AuthorizePaymentInput,
   AuthorizePaymentOutput,
+  BigNumberInput,
   CancelPaymentInput,
   CancelPaymentOutput,
   CapturePaymentInput,
@@ -90,7 +91,7 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
     input: InitiatePaymentInput
   ): Promise<InitiatePaymentOutput> {
     const sessionId = createOrderId()
-    const amount = formatFiuuAmount(input.amount)
+    const amount = this.resolveAmount(input.amount)
     const currency = this.resolveCurrency(input.currency_code)
     const data = this.getData(input.data)
 
@@ -123,7 +124,7 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
       return { data }
     }
 
-    const amount = formatFiuuAmount(input.amount)
+    const amount = this.resolveAmount(input.amount)
     const currency = this.resolveCurrency(input.currency_code)
 
     const checkoutUrl = this.buildCheckoutUrl({
@@ -348,6 +349,13 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
     return (currencyCode || this.options_.currency || "MYR").toUpperCase()
   }
 
+  private resolveAmount(amount: BigNumberInput): string {
+    if (this.options_.devAmount) {
+      return formatFiuuAmount(this.options_.devAmount)
+    }
+    return formatFiuuAmount(amount)
+  }
+
   private getPaymentBaseUrl(): string {
     if (this.options_.paymentBaseUrl) {
       return this.options_.paymentBaseUrl
@@ -407,7 +415,11 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
       customer?.phone ??
       "0000000000"
     ).replace(/[^0-9]/g, "")
-    const country = address?.country_code ?? this.options_.country ?? "MY"
+    const country =
+      extra.bill_country ??
+      address?.country_code ??
+      this.options_.country ??
+      (currency === "PHP" ? "PH" : "MY")
 
     const vcode = buildVcode({
       amount,
