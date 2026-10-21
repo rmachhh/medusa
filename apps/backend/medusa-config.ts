@@ -2,6 +2,35 @@ import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
+// Only register Fiuu when credentials exist, so deployments without them
+// still boot. Enable by setting FIUU_MERCHANT_ID, FIUU_VERIFY_KEY and
+// FIUU_SECRET_KEY.
+const fiuuEnabled = Boolean(
+  process.env.FIUU_MERCHANT_ID &&
+    process.env.FIUU_VERIFY_KEY &&
+    process.env.FIUU_SECRET_KEY
+)
+
+const fiuuProvider = {
+  resolve: "./src/modules/payment-fiuu",
+  id: "fiuu",
+  options: {
+    merchantId: process.env.FIUU_MERCHANT_ID,
+    verifyKey: process.env.FIUU_VERIFY_KEY,
+    secretKey: process.env.FIUU_SECRET_KEY,
+    sandbox: process.env.FIUU_SANDBOX === "true",
+    extendedVcode: process.env.FIUU_EXTENDED_VCODE === "true",
+    currency: process.env.FIUU_CURRENCY || "MYR",
+    country: process.env.FIUU_COUNTRY,
+    channel: process.env.FIUU_CHANNEL,
+    paymentBaseUrl: process.env.FIUU_PAYMENT_BASE_URL,
+    apiBaseUrl: process.env.FIUU_API_BASE_URL,
+    returnUrl: process.env.FIUU_RETURN_URL,
+    callbackUrl: process.env.FIUU_CALLBACK_URL,
+    cancelUrl: process.env.FIUU_CANCEL_URL,
+  },
+}
+
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
@@ -39,27 +68,7 @@ module.exports = defineConfig({
     {
       resolve: "@medusajs/medusa/payment",
       options: {
-        providers: [
-          {
-            resolve: "./src/modules/payment-fiuu",
-            id: "fiuu",
-            options: {
-              merchantId: process.env.FIUU_MERCHANT_ID,
-              verifyKey: process.env.FIUU_VERIFY_KEY,
-              secretKey: process.env.FIUU_SECRET_KEY,
-              sandbox: process.env.FIUU_SANDBOX === "true",
-              extendedVcode: process.env.FIUU_EXTENDED_VCODE === "true",
-              currency: process.env.FIUU_CURRENCY || "MYR",
-              country: process.env.FIUU_COUNTRY,
-              channel: process.env.FIUU_CHANNEL,
-              paymentBaseUrl: process.env.FIUU_PAYMENT_BASE_URL,
-              apiBaseUrl: process.env.FIUU_API_BASE_URL,
-              returnUrl: process.env.FIUU_RETURN_URL,
-              callbackUrl: process.env.FIUU_CALLBACK_URL,
-              cancelUrl: process.env.FIUU_CANCEL_URL,
-            },
-          },
-        ],
+        providers: fiuuEnabled ? [fiuuProvider] : [],
       },
     },
   ],
