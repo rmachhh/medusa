@@ -105,3 +105,14 @@ export function buildRefundResponseSignature(input: {
     `${input.refundType}${input.merchantId}${input.refId}${input.refundId}${input.transactionId}${input.amount}${input.status}${input.secretKey}`
   )
 }
+
+export function buildStatusQuerySkey(input: {
+  orderId: string
+  merchantId: string
+  verifyKey: string
+  amount: string
+}): string {
+  return md5(
+    `${input.orderId}${input.merchantId}${input.verifyKey}${input.amount}`
+  )
+}

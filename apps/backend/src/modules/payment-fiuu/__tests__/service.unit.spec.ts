@@ -78,6 +78,23 @@ describe("FiuuPaymentProviderService", () => {
       )
     })
 
+    it("uses the Medusa payment session id as the Fiuu order id", async () => {
+      const provider = createProvider()
+
+      const result = await provider.initiatePayment({
+        amount: 10,
+        currency_code: "MYR",
+        data: { session_id: "payses_123" },
+        context: customerContext(),
+      })
+
+      const url = new URL(result.data.checkout_url as string)
+
+      expect(result.id).toBe("payses_123")
+      expect(result.data.session_id).toBe("payses_123")
+      expect(url.searchParams.get("orderid")).toBe("payses_123")
+    })
+
     it("charges the configured test amount instead of the cart total", async () => {
       const provider = createProvider({ testAmount: "1.00" })
 
@@ -124,12 +141,50 @@ describe("FiuuPaymentProviderService", () => {
   describe("authorizePayment", () => {
     it("keeps unpaid sessions pending for the webhook", async () => {
       const provider = createProvider()
+      ;(global as any).fetch = jest.fn().mockRejectedValue(new Error("offline"))
 
       const result = await provider.authorizePayment({
-        data: { session_id: "s1", status: "pending" },
+        data: { session_id: "s1", status: "pending", amount: "10.00" },
       })
 
       expect(result.status).toBe("pending_authorization")
+    })
+
+    it("captures when Fiuu reports a successful status query", async () => {
+      const provider = createProvider()
+      ;(global as any).fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          StatCode: "00",
+          StatName: "captured",
+          OrderID: "payses_1",
+          Amount: "10.00",
+          TranID: "123456",
+          BillingDate: "2026-10-21 10:00:00",
+          Channel: "FPX",
+        }),
+      })
+
+      const result = await provider.authorizePayment({
+        data: { session_id: "payses_1", status: "pending", amount: "10.00" },
+      })
+
+      expect(result.status).toBe("captured")
+      expect((result.data as any).transaction_id).toBe("123456")
+    })
+
+    it("fails authorization when Fiuu reports a declined status", async () => {
+      const provider = createProvider()
+      ;(global as any).fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ StatCode: "11", StatName: "failed" }),
+      })
+
+      const result = await provider.authorizePayment({
+        data: { session_id: "payses_2", status: "pending", amount: "10.00" },
+      })
+
+      expect(result.status).toBe("error")
     })
 
     it("returns captured for paid sessions", async () => {

@@ -32,11 +32,13 @@ import {
   FiuuPaymentData,
   FiuuPaymentStatus,
   FiuuRefundResponse,
+  FiuuStatusQueryResponse,
 } from "./types"
 import { formatFiuuAmount } from "./utils/amount"
 import {
   buildRefundRequestSignature,
   buildRefundResponseSignature,
+  buildStatusQuerySkey,
   buildVcode,
   safeCompare,
   verifySkey,
@@ -90,7 +92,7 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
   async initiatePayment(
     input: InitiatePaymentInput
   ): Promise<InitiatePaymentOutput> {
-    const sessionId = createOrderId()
+    const sessionId = this.resolveSessionId(input.data)
     const amount = this.resolveChargeAmount(input.amount)
     const currency = this.resolveCurrency(input.currency_code)
     const data = this.getData(input.data)
@@ -160,6 +162,28 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
 
     if (data.status === "canceled") {
       return { status: "canceled", data }
+    }
+
+    // Webhooks do not update the stored session data, and the checkout
+    // completion runs before the buyer pays. Ask Fiuu for the live status
+    // instead of trusting the cached "pending".
+    const queried = await this.queryPaymentStatus(data.session_id, data.amount)
+
+    if (queried?.StatCode === "00") {
+      return {
+        status: "captured",
+        data: this.withPaidStatus(data, queried),
+      }
+    }
+
+    if (queried?.StatCode === "11") {
+      return {
+        status: "error",
+        data: {
+          ...data,
+          status: "failed" as FiuuPaymentStatus,
+        },
+      }
     }
 
     return { status: "pending_authorization", data }
@@ -343,6 +367,76 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
 
   private getData(data?: Record<string, unknown>): FiuuPaymentData {
     return (data ?? {}) as unknown as FiuuPaymentData
+  }
+
+  private resolveSessionId(data?: Record<string, unknown>): string {
+    const sessionId = (data as Record<string, unknown> | undefined)
+      ?.session_id
+
+    return typeof sessionId === "string" && sessionId.length > 0
+      ? sessionId
+      : createOrderId()
+  }
+
+  private withPaidStatus(
+    data: FiuuPaymentData,
+    queried: FiuuStatusQueryResponse
+  ): FiuuPaymentData {
+    return {
+      ...data,
+      status: "paid",
+      transaction_id: queried.TranID,
+      paydate: queried.BillingDate,
+      channel: queried.Channel,
+    }
+  }
+
+  private async queryPaymentStatus(
+    orderId?: string,
+    amount?: string
+  ): Promise<FiuuStatusQueryResponse | undefined> {
+    if (!orderId || !amount) {
+      return undefined
+    }
+
+    try {
+      const skey = buildStatusQuerySkey({
+        orderId,
+        merchantId: this.options_.merchantId,
+        verifyKey: this.options_.verifyKey,
+        amount,
+      })
+
+      const body = new URLSearchParams({
+        amount,
+        oID: orderId,
+        domain: this.options_.merchantId,
+        skey,
+      })
+
+      const response = await fetch(`${this.getApiBaseUrl()}/RMS/query/q_by_oid.php`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body,
+        signal: AbortSignal.timeout(8000),
+      })
+
+      if (!response.ok) {
+        this.logger_?.warn(
+          `Fiuu status query failed with HTTP ${response.status}`
+        )
+
+        return undefined
+      }
+
+      return (await response.json()) as FiuuStatusQueryResponse
+    } catch (error) {
+      this.logger_?.warn(
+        `Fiuu status query error: ${(error as Error).message}`
+      )
+
+      return undefined
+    }
   }
 
   private resolveChargeAmount(amount: BigNumberInput): string {

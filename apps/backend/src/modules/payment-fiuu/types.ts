@@ -57,3 +57,18 @@ export type FiuuRefundResponse = {
   error_code?: string
   error_desc?: string
 }
+
+export type FiuuStatusQueryResponse = {
+  StatCode?: string
+  StatName?: string
+  OrderID?: string
+  Amount?: string
+  TranID?: string
+  Domain?: string
+  BillingDate?: string
+  VrfKey?: string
+  Channel?: string
+  Currency?: string
+  ErrorCode?: string
+  ErrorDesc?: string
+}
