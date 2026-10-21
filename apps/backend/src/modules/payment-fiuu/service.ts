@@ -6,6 +6,7 @@ import {
 } from "@medusajs/framework/utils"
 import type {
   AuthorizePaymentInput,
+  BigNumberInput,
   AuthorizePaymentOutput,
   CancelPaymentInput,
   CancelPaymentOutput,
@@ -90,7 +91,7 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
     input: InitiatePaymentInput
   ): Promise<InitiatePaymentOutput> {
     const sessionId = createOrderId()
-    const amount = formatFiuuAmount(input.amount)
+    const amount = this.resolveChargeAmount(input.amount)
     const currency = this.resolveCurrency(input.currency_code)
     const data = this.getData(input.data)
 
@@ -123,7 +124,7 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
       return { data }
     }
 
-    const amount = formatFiuuAmount(input.amount)
+    const amount = this.resolveChargeAmount(input.amount)
     const currency = this.resolveCurrency(input.currency_code)
 
     const checkoutUrl = this.buildCheckoutUrl({
@@ -342,6 +343,18 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
 
   private getData(data?: Record<string, unknown>): FiuuPaymentData {
     return (data ?? {}) as unknown as FiuuPaymentData
+  }
+
+  private resolveChargeAmount(amount: BigNumberInput): string {
+    if (this.options_.testAmount !== undefined && this.options_.testAmount !== "") {
+      this.logger_?.warn(
+        `Fiuu testAmount is active: charging ${this.options_.testAmount} instead of the cart total. Unset FIUU_TEST_AMOUNT for real payments.`
+      )
+
+      return formatFiuuAmount(this.options_.testAmount)
+    }
+
+    return formatFiuuAmount(amount)
   }
 
   private resolveCurrency(currencyCode?: string): string {

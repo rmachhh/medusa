@@ -20,6 +20,7 @@ const fiuuProvider = {
     secretKey: process.env.FIUU_SECRET_KEY,
     sandbox: process.env.FIUU_SANDBOX === "true",
     extendedVcode: process.env.FIUU_EXTENDED_VCODE === "true",
+    testAmount: process.env.FIUU_TEST_AMOUNT,
     currency: process.env.FIUU_CURRENCY || "MYR",
     country: process.env.FIUU_COUNTRY,
     channel: process.env.FIUU_CHANNEL,

@@ -17,8 +17,11 @@ const logger = {
   error: jest.fn(),
 }
 
-function createProvider() {
-  return new (FiuuPaymentProviderService as any)({ logger }, options)
+function createProvider(overrides: Record<string, unknown> = {}) {
+  return new (FiuuPaymentProviderService as any)({ logger }, {
+    ...options,
+    ...overrides,
+  })
 }
 
 function customerContext(email = "buyer@example.com") {
@@ -72,6 +75,35 @@ describe("FiuuPaymentProviderService", () => {
           currency: "MYR",
           extended: true,
         })
+      )
+    })
+
+    it("charges the configured test amount instead of the cart total", async () => {
+      const provider = createProvider({ testAmount: "1.00" })
+
+      const result = await provider.initiatePayment({
+        amount: 2999,
+        currency_code: "PHP",
+        data: {},
+        context: customerContext(),
+      })
+
+      const url = new URL(result.data.checkout_url as string)
+
+      expect(result.data.amount).toBe("1.00")
+      expect(url.searchParams.get("amount")).toBe("1.00")
+      expect(url.searchParams.get("vcode")).toBe(
+        buildVcode({
+          amount: "1.00",
+          merchantId: "ACME",
+          orderId: result.id as string,
+          verifyKey: options.verifyKey,
+          currency: "PHP",
+          extended: true,
+        })
+      )
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Fiuu testAmount is active")
       )
     })
 

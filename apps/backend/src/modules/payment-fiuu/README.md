@@ -23,6 +23,7 @@ done) and set these environment variables:
 | `FIUU_RETURN_URL` | no | Buyer redirect after payment |
 | `FIUU_CALLBACK_URL` | no | Fiuu callback/notification URL |
 | `FIUU_CANCEL_URL` | no | Buyer redirect on cancel |
+| `FIUU_TEST_AMOUNT` | dev only | Charge this amount instead of the cart total, e.g. `1.00`. Leave empty in production. |
 
 ## Webhook
 
