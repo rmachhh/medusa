@@ -402,7 +402,11 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
         customer?.company_name ||
         "Guest")
 
-    const mobile = extra.bill_mobile ?? customer?.phone ?? "0000000000"
+    const mobile = (
+      extra.bill_mobile ??
+      customer?.phone ??
+      "0000000000"
+    ).replace(/[^0-9]/g, "")
     const country = address?.country_code ?? this.options_.country ?? "MY"
 
     const vcode = buildVcode({
@@ -446,8 +450,6 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
         searchParams.set(key, value)
       }
     }
-
-    searchParams.set("metadata", JSON.stringify({ session_id: sessionId }))
 
     return url.toString()
   }

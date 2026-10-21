@@ -62,9 +62,7 @@ describe("FiuuPaymentProviderService", () => {
       expect(url.searchParams.get("currency")).toBe("MYR")
       expect(url.searchParams.get("bill_email")).toBe("buyer@example.com")
       expect(url.searchParams.get("bill_name")).toBe("Ada Lovelace")
-      expect(url.searchParams.get("metadata")).toBe(
-        JSON.stringify({ session_id: result.id })
-      )
+      expect(url.searchParams.get("bill_mobile")).toBe("60123456789")
       expect(url.searchParams.get("vcode")).toBe(
         buildVcode({
           amount: "10.00",
