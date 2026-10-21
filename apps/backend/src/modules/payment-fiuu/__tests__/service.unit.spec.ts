@@ -154,15 +154,16 @@ describe("FiuuPaymentProviderService", () => {
       const provider = createProvider()
       ;(global as any).fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({
-          StatCode: "00",
-          StatName: "captured",
-          OrderID: "payses_1",
-          Amount: "10.00",
-          TranID: "123456",
-          BillingDate: "2026-10-21 10:00:00",
-          Channel: "FPX",
-        }),
+        text: async () =>
+          [
+            "StatCode: 00",
+            "StatName: captured",
+            "OrderID: payses_1",
+            "Amount: 10.00",
+            "TranID: 123456",
+            "BillingDate: 2026-10-21 10:00:00",
+            "Channel: FPX",
+          ].join("\n"),
       })
 
       const result = await provider.authorizePayment({
@@ -177,7 +178,7 @@ describe("FiuuPaymentProviderService", () => {
       const provider = createProvider()
       ;(global as any).fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ StatCode: "11", StatName: "failed" }),
+        text: async () => "StatCode: 11\nStatName: failed",
       })
 
       const result = await provider.authorizePayment({

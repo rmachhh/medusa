@@ -43,6 +43,7 @@ import {
   safeCompare,
   verifySkey,
 } from "./utils/signature"
+import { parseFiuuResponse } from "./utils/response"
 import { mapFiuuStatus, normalizeWebhookPayload } from "./utils/webhook"
 
 type InjectedDependencies = {
@@ -429,7 +430,7 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
         return undefined
       }
 
-      return (await response.json()) as FiuuStatusQueryResponse
+      return parseFiuuResponse(await response.text())
     } catch (error) {
       this.logger_?.warn(
         `Fiuu status query error: ${(error as Error).message}`
