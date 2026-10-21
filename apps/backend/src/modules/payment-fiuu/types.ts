@@ -13,7 +13,6 @@ export type FiuuOptions = {
   callbackUrl?: string
   cancelUrl?: string
   extendedVcode?: boolean
-  devAmount?: string
 }
 
 export type FiuuPaymentStatus = "pending" | "paid" | "failed" | "canceled"
@@ -39,7 +38,6 @@ export type FiuuPaymentData = {
   bill_email?: string
   bill_name?: string
   bill_mobile?: string
-  bill_country?: string
   refunds?: FiuuRefundRecord[]
 }
 
