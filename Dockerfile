@@ -14,6 +14,7 @@ RUN npm run build --workspace=@dtc/backend
 
 FROM base AS runner
 ENV NODE_ENV=production
+RUN apk add --no-cache curl
 WORKDIR /app
 COPY --from=builder /app/apps/backend/.medusa/server ./
 RUN npm install --omit=dev --no-audit --no-fund
