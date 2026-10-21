@@ -52,9 +52,7 @@ describe("FiuuPaymentProviderService", () => {
 
       const url = new URL(result.data.checkout_url as string)
 
-      expect(result.id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-      )
+      expect(result.id).toMatch(/^[0-9a-f]{32}$/)
       expect(result.data.status).toBe("pending")
       expect(result.data.amount).toBe("10.00")
       expect(url.origin).toBe("https://sandbox-payment.fiuu.com")

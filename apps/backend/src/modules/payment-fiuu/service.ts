@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 import {
   AbstractPaymentProvider,
   BigNumber,
@@ -50,6 +50,12 @@ type InjectedDependencies = {
   }
 }
 
+function createOrderId(): string {
+  // Fiuu accepts alphanumeric order IDs only. Hex keeps it unique and
+  // avoids the hyphens from a UUID.
+  return randomBytes(16).toString("hex")
+}
+
 const PRODUCTION_PAYMENT_URL = "https://pay.fiuu.com"
 const SANDBOX_PAYMENT_URL = "https://sandbox-payment.fiuu.com"
 const PRODUCTION_API_URL = "https://api.fiuu.com"
@@ -83,7 +89,7 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
   async initiatePayment(
     input: InitiatePaymentInput
   ): Promise<InitiatePaymentOutput> {
-    const sessionId = randomUUID()
+    const sessionId = createOrderId()
     const amount = formatFiuuAmount(input.amount)
     const currency = this.resolveCurrency(input.currency_code)
     const data = this.getData(input.data)
