@@ -123,7 +123,7 @@ export function buildCatalogRow(
     variant.id,
     product.id,
     `${product.title}${variantTitle}`,
-    product.description ?? product.title,
+    product.description?.trim() || product.title,
     availability,
     "new",
     formatPrice(hasSale ? (original as number) : price, currency),

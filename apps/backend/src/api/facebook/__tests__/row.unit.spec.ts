@@ -98,6 +98,16 @@ describe("buildCatalogRow", () => {
     expect(row?.split("\t")[7]).toBe("")
   })
 
+  it("falls back to the product title for blank descriptions", () => {
+    const row = buildCatalogRow(
+      { ...product, description: "   " },
+      product.variants![0],
+      options
+    )
+
+    expect(row?.split("\t")[3]).toBe("Test Shirt")
+  })
+
   it("falls back to the explicit currency price row", () => {
     const variant = {
       ...product.variants![0],
