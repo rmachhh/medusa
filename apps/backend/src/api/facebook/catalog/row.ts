@@ -5,6 +5,10 @@ export type CatalogVariant = {
   barcode?: string | null
   manage_inventory?: boolean | null
   inventory_quantity?: number | null
+  prices?: {
+    amount?: number | null
+    currency_code?: string | null
+  }[] | null
   calculated_price?: {
     calculated_amount?: number | null
     original_amount?: number | null
@@ -85,10 +89,18 @@ export function buildCatalogRow(
     return undefined
   }
 
-  const price = variant.calculated_price?.calculated_amount
+  const directPrice = variant.prices?.find(
+    (price) =>
+      price.currency_code?.toLowerCase() === options.currency.toLowerCase()
+  )
+
+  const price =
+    variant.calculated_price?.calculated_amount ?? directPrice?.amount
   const original = variant.calculated_price?.original_amount
   const currency = (
-    variant.calculated_price?.currency_code ?? options.currency
+    variant.calculated_price?.currency_code ??
+    directPrice?.currency_code ??
+    options.currency
   ).toUpperCase()
 
   if (typeof price !== "number") {

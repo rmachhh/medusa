@@ -47,8 +47,8 @@ describe("buildCatalogRow", () => {
       "A soft shirt",
       "in stock",
       "new",
-      "3499.00 php",
-      "2999.00 php",
+      "3499.00 PHP",
+      "2999.00 PHP",
       "https://demo.chanlabs.dev/products/test-shirt",
       "https://medusa.lca-app.com/uploads/shirt.jpg",
       "Chanlabs",
@@ -95,6 +95,18 @@ describe("buildCatalogRow", () => {
 
     expect(row?.split("\t")[6]).toBe("2999.00 PHP")
     expect(row?.split("\t")[7]).toBe("")
+  })
+
+  it("falls back to the explicit currency price row", () => {
+    const variant = {
+      ...product.variants![0],
+      calculated_price: null,
+      prices: [{ amount: 1234, currency_code: "php" }],
+    }
+
+    const row = buildCatalogRow(product, variant, options)
+
+    expect(row?.split("\t")[6]).toBe("1234.00 PHP")
   })
 
   it("skips variants without a price, image, or handle", () => {
