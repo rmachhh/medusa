@@ -67,6 +67,22 @@ module.exports = defineConfig({
   },
   modules: [
     {
+      resolve: "@medusajs/medusa/file",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/medusa/file-local",
+            id: "local",
+            options: {
+              // Defaults to http://localhost:9000/static, which breaks
+              // uploaded media behind a proxy.
+              backend_url: `${process.env.MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/static`,
+            },
+          },
+        ],
+      },
+    },
+    {
       resolve: "@medusajs/medusa/payment",
       options: {
         providers: fiuuEnabled ? [fiuuProvider] : [],
