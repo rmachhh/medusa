@@ -81,6 +81,28 @@ export async function GET(
   })
 
   const products = data as unknown as CatalogProduct[]
+
+  if (req.query.debug === "1") {
+    res.status(200).json({
+      currency: options.currency,
+      productCount: products.length,
+      sample: products.slice(0, 2).map((product) => ({
+        id: product.id,
+        handle: product.handle,
+        thumbnail: product.thumbnail,
+        imageCount: product.images?.length ?? 0,
+        variantCount: product.variants?.length ?? 0,
+        variants: (product.variants ?? []).slice(0, 2).map((variant) => ({
+          id: variant.id,
+          calculated_price: variant.calculated_price,
+          manage_inventory: variant.manage_inventory,
+          inventory_quantity: variant.inventory_quantity,
+        })),
+      })),
+    })
+    return
+  }
+
   const tsv = buildCatalogTsv(products, options)
 
   res.setHeader("content-type", "text/tab-separated-values; charset=utf-8")
