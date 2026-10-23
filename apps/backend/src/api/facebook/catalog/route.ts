@@ -66,6 +66,8 @@ export async function GET(
       "variants.barcode",
       "variants.manage_inventory",
       "variants.inventory_quantity",
+      "variants.prices.amount",
+      "variants.prices.currency_code",
       "variants.calculated_price",
     ],
     filters: {
@@ -74,7 +76,7 @@ export async function GET(
     context: {
       variants: {
         calculated_price: QueryContext({
-          currency_code: options.currency,
+          currency_code: options.currency.toLowerCase(),
         }),
       },
     },
@@ -95,6 +97,7 @@ export async function GET(
         variants: (product.variants ?? []).slice(0, 2).map((variant) => ({
           id: variant.id,
           calculated_price: variant.calculated_price,
+          prices: (variant as any).prices,
           manage_inventory: variant.manage_inventory,
           inventory_quantity: variant.inventory_quantity,
         })),

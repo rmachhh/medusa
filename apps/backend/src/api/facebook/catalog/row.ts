@@ -87,8 +87,9 @@ export function buildCatalogRow(
 
   const price = variant.calculated_price?.calculated_amount
   const original = variant.calculated_price?.original_amount
-  const currency =
+  const currency = (
     variant.calculated_price?.currency_code ?? options.currency
+  ).toUpperCase()
 
   if (typeof price !== "number") {
     return undefined
