@@ -107,9 +107,10 @@ export function buildCatalogRow(
     return undefined
   }
 
-  const quantity = variant.inventory_quantity ?? 0
+  const trackedInventory = variant.manage_inventory !== false
+  const quantity = trackedInventory ? variant.inventory_quantity ?? 0 : undefined
   const availability =
-    variant.manage_inventory === false || quantity > 0 ? "in stock" : "out of stock"
+    !trackedInventory || (quantity ?? 0) > 0 ? "in stock" : "out of stock"
 
   const variantTitle =
     variant.title && variant.title.toLowerCase() !== "default"

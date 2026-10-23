@@ -79,6 +79,7 @@ describe("buildCatalogRow", () => {
     const row = buildCatalogRow(product, variant, options)
 
     expect(row?.split("\t")[4]).toBe("in stock")
+    expect(row?.split("\t")[13]).toBe("")
   })
 
   it("leaves sale_price empty without a discount", () => {
