@@ -35,6 +35,7 @@ import {
   FiuuStatusQueryResponse,
 } from "./types"
 import { formatFiuuAmount } from "./utils/amount"
+import { resolveReturnUrl } from "./utils/return-url"
 import {
   buildRefundRequestSignature,
   buildRefundResponseSignature,
@@ -114,6 +115,7 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
         currency,
         status: "pending",
         checkout_url: checkoutUrl,
+        ...this.resolveSessionUrls(data),
       } satisfies FiuuPaymentData,
     }
   }
@@ -366,6 +368,30 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
     }
   }
 
+  /**
+   * One backend can serve several storefronts, so a payment session may carry
+   * its own return/cancel URL. Only allowlisted origins are accepted; anything
+   * else falls back to the configured default.
+   */
+  private resolveSessionUrls(extra: FiuuPaymentData): {
+    returnUrl?: string
+    cancelUrl?: string
+  } {
+    const allowedOrigins = this.options_.allowedReturnOrigins ?? []
+    return {
+      returnUrl: resolveReturnUrl({
+        fallback: this.options_.returnUrl,
+        requested: extra.return_url,
+        allowedOrigins,
+      }),
+      cancelUrl: resolveReturnUrl({
+        fallback: this.options_.cancelUrl,
+        requested: extra.cancel_url,
+        allowedOrigins,
+      }),
+    }
+  }
+
   private getData(data?: Record<string, unknown>): FiuuPaymentData {
     return (data ?? {}) as unknown as FiuuPaymentData
   }
@@ -547,10 +573,11 @@ export class FiuuPaymentProviderService extends AbstractPaymentProvider<FiuuOpti
       searchParams.set("channel", this.options_.channel)
     }
 
+    const sessionUrls = this.resolveSessionUrls(extra)
     const urls = {
-      returnurl: this.options_.returnUrl,
+      returnurl: sessionUrls.returnUrl,
       callbackurl: this.options_.callbackUrl,
-      cancelurl: this.options_.cancelUrl,
+      cancelurl: sessionUrls.cancelUrl,
     }
 
     for (const [key, value] of Object.entries(urls)) {

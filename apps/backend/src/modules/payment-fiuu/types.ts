@@ -12,6 +12,9 @@ export type FiuuOptions = {
   notifyUrl?: string
   callbackUrl?: string
   cancelUrl?: string
+  // Origins allowed to override the return/cancel URL per payment session.
+  // Empty means every session uses the configured returnUrl/cancelUrl.
+  allowedReturnOrigins?: string[]
   extendedVcode?: boolean
   testAmount?: string | number
 }
@@ -39,6 +42,9 @@ export type FiuuPaymentData = {
   bill_email?: string
   bill_name?: string
   bill_mobile?: string
+  // Per-session storefront URLs, already validated against the allowlist.
+  return_url?: string
+  cancel_url?: string
   refunds?: FiuuRefundRecord[]
 }
 

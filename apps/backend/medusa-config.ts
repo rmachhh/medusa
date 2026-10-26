@@ -29,6 +29,12 @@ const fiuuProvider = {
     returnUrl: process.env.FIUU_RETURN_URL,
     callbackUrl: process.env.FIUU_CALLBACK_URL,
     cancelUrl: process.env.FIUU_CANCEL_URL,
+    // Storefront origins allowed to request their own return/cancel URL per
+    // payment session. One backend can serve several storefronts.
+    allowedReturnOrigins: (process.env.FIUU_ALLOWED_RETURN_ORIGINS ?? "")
+      .split(",")
+      .map((origin) => origin.trim().replace(/\/+$/, ""))
+      .filter(Boolean),
   },
 }
 
