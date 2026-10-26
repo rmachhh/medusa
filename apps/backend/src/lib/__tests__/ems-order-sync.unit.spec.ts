@@ -1,5 +1,12 @@
 import { createHmac } from "node:crypto"
-import { buildEmsOrderPayload, isSyncableOrder, signEmsBody, syncOrderToEms } from "../ems-order-sync"
+import {
+  buildEmsOrderPayload,
+  isSyncableOrder,
+  signEmsBody,
+  statusUrlFor,
+  syncOrderStatusToEms,
+  syncOrderToEms,
+} from "../ems-order-sync"
 
 const order = (overrides: Record<string, any> = {}) => ({
   id: "order_01ABC",
@@ -233,3 +240,63 @@ describe("syncOrderToEms", () => {
     expect(result).toBe("skipped")
   })
 })
+
+describe("statusUrlFor", () => {
+  it("derives the status endpoint from the ingest URL", () => {
+    expect(statusUrlFor("https://ems.example/api/internal/medusa/orders", "order_1")).toBe(
+      "https://ems.example/api/internal/medusa/orders/order_1/status"
+    )
+    expect(statusUrlFor("https://ems.example/api/internal/medusa/orders/", "order_1")).toBe(
+      "https://ems.example/api/internal/medusa/orders/order_1/status"
+    )
+    expect(statusUrlFor("https://ems.example/api/internal/medusa", "order_1")).toBeNull()
+    expect(statusUrlFor("", "order_1")).toBeNull()
+  })
+})
+
+describe("syncOrderStatusToEms", () => {
+  beforeEach(() => {
+    process.env.EMS_ORDER_INGEST_URL = "https://ems.test/api/internal/medusa/orders"
+    process.env.EMS_MEDUSA_SHARED_SECRET = "s".repeat(32)
+  })
+
+  afterEach(() => {
+    delete process.env.EMS_ORDER_INGEST_URL
+    delete process.env.EMS_MEDUSA_SHARED_SECRET
+  })
+
+  it("posts the signed cancellation", async () => {
+    const calls: any[] = []
+    const fetchImpl: any = async (url: string, init: any) => {
+      calls.push({ url, init })
+      return { ok: true, status: 200 }
+    }
+
+    const result = await syncOrderStatusToEms({ orderId: "order_1", status: "canceled", fetchImpl })
+    expect(result).toBe("sent")
+    expect(calls[0].url).toBe("https://ems.test/api/internal/medusa/orders/order_1/status")
+    expect(JSON.parse(calls[0].init.body)).toEqual({ status: "canceled" })
+    expect(calls[0].init.headers["x-medusa-signature"]).toBe(
+      signEmsBody(calls[0].init.body, "s".repeat(32))
+    )
+  })
+
+  it("treats a 404 as nothing to update", async () => {
+    const fetchImpl: any = async () => ({ ok: false, status: 404 })
+    const result = await syncOrderStatusToEms({ orderId: "order_1", status: "canceled", fetchImpl })
+    expect(result).toBe("skipped")
+  })
+
+  it("skips when the EMS URL is not configured", async () => {
+    delete process.env.EMS_ORDER_INGEST_URL
+    const result = await syncOrderStatusToEms({
+      orderId: "order_1",
+      status: "canceled",
+      fetchImpl: (async () => {
+        throw new Error("must not be called")
+      }) as any,
+    })
+    expect(result).toBe("skipped")
+  })
+})
+

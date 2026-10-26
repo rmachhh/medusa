@@ -143,6 +143,13 @@ export function isSyncableOrder(order: any): boolean {
   return typeof order?.id === "string" && hasCapturedPayment(order)
 }
 
+/** Status endpoint derived from the ingest URL: .../orders -> .../orders/:id/status */
+export function statusUrlFor(ingestUrl: string, orderId: string): string | null {
+  const base = (ingestUrl || "").trim().replace(/\/+$/, "")
+  if (!base.endsWith("/orders")) return null
+  return `${base.slice(0, -"/orders".length)}/orders/${encodeURIComponent(orderId)}/status`
+}
+
 export function signEmsBody(raw: string, secret: string): string {
   return "sha256=" + createHmac("sha256", secret).update(raw).digest("hex")
 }
@@ -216,5 +223,60 @@ export async function syncOrderToEms({
   }
 
   logger?.error(`EMS order sync: gave up on ${orderId}.`)
+  return "failed"
+}
+
+/** Propagates a cancellation or refund to the mirrored EMS payment. */
+export async function syncOrderStatusToEms({
+  orderId,
+  status,
+  logger,
+  fetchImpl = fetch,
+}: {
+  orderId: string
+  status: "canceled" | "refunded"
+  logger?: { info: (message: string) => void; warn: (message: string) => void; error: (message: string) => void }
+  fetchImpl?: typeof fetch
+}): Promise<"sent" | "skipped" | "failed"> {
+  const ingestUrl = (process.env.EMS_ORDER_INGEST_URL ?? "").trim()
+  const secret = (process.env.EMS_MEDUSA_SHARED_SECRET ?? "").trim()
+  const url = statusUrlFor(ingestUrl, orderId)
+  if (!url || secret.length < 32) {
+    logger?.warn("EMS order status sync is not configured; skipping.")
+    return "skipped"
+  }
+
+  const raw = JSON.stringify({ status })
+  const signature = signEmsBody(raw, secret)
+
+  for (const delay of RETRY_DELAYS_MS) {
+    if (delay) await new Promise((resolve) => setTimeout(resolve, delay))
+    try {
+      const response = await fetchImpl(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-medusa-signature": signature },
+        body: raw,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      })
+      if (response.ok) {
+        logger?.info(`EMS order status: ${orderId} marked ${status}.`)
+        return "sent"
+      }
+      if (response.status === 404) {
+        // Not mirrored in EMS (e.g. canceled before payment); nothing to update.
+        logger?.info(`EMS order status: ${orderId} is not in EMS; nothing to update.`)
+        return "skipped"
+      }
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        logger?.error(`EMS order status rejected for ${orderId} (${response.status}).`)
+        return "failed"
+      }
+      logger?.warn(`EMS order status: retrying ${orderId} (${response.status}).`)
+    } catch (error: any) {
+      logger?.warn(`EMS order status: retrying ${orderId} (${error?.name ?? "error"}).`)
+    }
+  }
+
+  logger?.error(`EMS order status: gave up on ${orderId}.`)
   return "failed"
 }
