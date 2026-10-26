@@ -92,11 +92,8 @@ export function buildEmsOrderPayload(
     payment.data?.transaction_id ?? payment.data?.tranID ?? payment.id
   if (!transactionId) return { skip: "missing-transaction-id" }
 
-  // Development checkout uses the DEV0 test SKU, which has no EMS program.
-  if ((order.items ?? []).some((item: any) => item?.variant_sku === "DEV0")) {
-    return { skip: "dev-checkout" }
-  }
-
+  // The DEV0 development product is sent too: EMS records it as the dev-test
+  // program so a test order can be verified end to end.
   const items = (order.items ?? [])
     .filter((item: any) => typeof item?.variant_sku === "string")
     .map((item: any) => ({

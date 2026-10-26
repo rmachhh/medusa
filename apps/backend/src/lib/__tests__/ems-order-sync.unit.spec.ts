@@ -62,11 +62,29 @@ describe("buildEmsOrderPayload", () => {
     expect(built).toEqual({ skip: "missing-variant-sku" })
   })
 
-  it("skips the development DEV0 checkout", () => {
-    const built = buildEmsOrderPayload(
-      order({ items: [{ variant_sku: "DEV0", unit_price: 1, quantity: 1 }], total: 1 })
+  it("sends the development DEV0 order so EMS can record it", () => {
+    const built: any = buildEmsOrderPayload(
+      order({
+        items: [{ variant_sku: "DEV0", unit_price: 1, quantity: 1 }],
+        total: 1,
+        payment_collections: [
+          {
+            payments: [
+              {
+                id: "pay_dev",
+                provider_id: "pp_fiuu_fiuu",
+                amount: 1,
+                captured_at: "2026-10-26T10:00:00.000Z",
+                data: { transaction_id: "tran-dev" },
+              },
+            ],
+          },
+        ],
+      })
     )
-    expect(built).toEqual({ skip: "dev-checkout" })
+    expect(built.payload.items).toEqual([{ sku: "DEV0", amount: 1, quantity: 1 }])
+    expect(built.payload.total).toBe(1)
+    expect(built.payload.payment.amount).toBe(1)
   })
 
   it("falls back to the payment id when the provider stores no transaction id", () => {
