@@ -81,12 +81,12 @@ export function buildEmsOrderPayload(
   order: any
 ): { payload: EmsOrderPayload } | { skip: string } {
   if (!order?.id) return { skip: "missing-order-id" }
-  if (order.payment_status !== "captured") {
-    return { skip: `payment-status-${order.payment_status ?? "unknown"}` }
-  }
 
+  // order.payment_status is a computed field: the remote-query graph returns
+  // "unknown" for it, so capture is derived from the payment itself.
   const payment = capturedPayment(order)
   if (!payment?.provider_id) return { skip: "missing-payment-provider" }
+  if (!payment.captured_at) return { skip: "payment-not-captured" }
 
   const transactionId =
     payment.data?.transaction_id ?? payment.data?.tranID ?? payment.id
@@ -131,9 +131,16 @@ export function buildEmsOrderPayload(
   }
 }
 
-/** Only captured orders are mirrored; anything else waits for the retry job. */
+/** True once any payment on the order carries a capture timestamp. */
+export function hasCapturedPayment(order: any): boolean {
+  return (order?.payment_collections ?? []).some((collection: any) =>
+    (collection?.payments ?? []).some((payment: any) => Boolean(payment?.captured_at))
+  )
+}
+
+/** Orders worth sending: identified, and carrying a captured payment. */
 export function isSyncableOrder(order: any): boolean {
-  return order?.payment_status === "captured" && typeof order?.id === "string"
+  return typeof order?.id === "string" && hasCapturedPayment(order)
 }
 
 export function signEmsBody(raw: string, secret: string): string {

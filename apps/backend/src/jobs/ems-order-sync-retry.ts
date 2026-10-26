@@ -20,9 +20,9 @@ export default async function emsOrderSyncRetry(container: MedusaContainer) {
   const since = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000)
   const { data } = await query.graph({
     entity: "order",
-    fields: ["id", "payment_status"],
-    // payment_status is filtered in code: the remote-query filter type for
-    // orders does not expose it, and the batch is small.
+    // order.payment_status is computed and comes back "unknown" from the graph,
+    // so capture is read from the payment rows and filtered in code.
+    fields: ["id", "payment_collections.payments.captured_at"],
     filters: {
       created_at: { $gte: since.toISOString() },
     },

@@ -49,10 +49,21 @@ describe("buildEmsOrderPayload", () => {
     })
   })
 
-  it("skips orders that are not captured yet", () => {
-    expect(buildEmsOrderPayload(order({ payment_status: "awaiting" }))).toEqual({
-      skip: "payment-status-awaiting",
-    })
+  it("uses the payment capture time, not the computed payment_status", () => {
+    const built: any = buildEmsOrderPayload(order({ payment_status: "unknown" }))
+    expect(built.payload.medusaOrderId).toBe("order_01ABC")
+    expect(built.payload.payment.capturedAt).toBe("2026-10-26T10:00:00.000Z")
+  })
+
+  it("skips a payment that has not been captured", () => {
+    const built = buildEmsOrderPayload(
+      order({
+        payment_collections: [
+          { payments: [{ id: "pay_01ABC", provider_id: "pp_fiuu_fiuu", amount: 7673, data: {} }] },
+        ],
+      })
+    )
+    expect(built).toEqual({ skip: "payment-not-captured" })
   })
 
   it("skips orders without a mapped variant SKU", () => {
@@ -93,7 +104,13 @@ describe("buildEmsOrderPayload", () => {
         payment_collections: [
           {
             payments: [
-              { id: "pay_01ABC", provider_id: "pp_fiuu_fiuu", amount: 7673, data: {} },
+              {
+                id: "pay_01ABC",
+                provider_id: "pp_fiuu_fiuu",
+                amount: 7673,
+                captured_at: "2026-10-26T10:00:00.000Z",
+                data: {},
+              },
             ],
           },
         ],
@@ -110,10 +127,16 @@ describe("buildEmsOrderPayload", () => {
 })
 
 describe("isSyncableOrder", () => {
-  it("only accepts captured orders with an id", () => {
-    expect(isSyncableOrder({ id: "order_1", payment_status: "captured" })).toBe(true)
-    expect(isSyncableOrder({ id: "order_1", payment_status: "awaiting" })).toBe(false)
-    expect(isSyncableOrder({ payment_status: "captured" })).toBe(false)
+  const withPayment = (capturedAt?: string) => ({
+    id: "order_1",
+    payment_collections: [{ payments: [{ id: "pay_1", captured_at: capturedAt }] }],
+  })
+
+  it("requires an id and a captured payment", () => {
+    expect(isSyncableOrder(withPayment("2026-10-26T10:00:00.000Z"))).toBe(true)
+    expect(isSyncableOrder(withPayment(undefined))).toBe(false)
+    expect(isSyncableOrder({ id: "order_1", payment_status: "captured" })).toBe(false)
+    expect(isSyncableOrder({ payment_collections: [] })).toBe(false)
     expect(isSyncableOrder(null)).toBe(false)
   })
 })
@@ -181,9 +204,15 @@ describe("syncOrderToEms", () => {
     expect(calls).toBe(1)
   })
 
-  it("skips when the order is not captured", async () => {
+  it("skips when the order has no captured payment", async () => {
     const result = await syncOrderToEms({
-      container: container([order({ payment_status: "awaiting" })]) as any,
+      container: container([
+        order({
+          payment_collections: [
+            { payments: [{ id: "pay_01ABC", provider_id: "pp_fiuu_fiuu", amount: 7673, data: {} }] },
+          ],
+        }),
+      ]) as any,
       orderId: "order_01ABC",
       fetchImpl: (async () => {
         throw new Error("must not be called")
