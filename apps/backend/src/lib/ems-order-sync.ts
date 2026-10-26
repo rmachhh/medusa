@@ -88,6 +88,11 @@ export function buildEmsOrderPayload(
   if (!payment?.provider_id) return { skip: "missing-payment-provider" }
   if (!payment.captured_at) return { skip: "payment-not-captured" }
 
+  // Refunded orders keep the original capture but drop the total to zero; EMS
+  // only accepts positive totals, so they must never be re-ingested.
+  if (!(Number(order.total ?? 0) > 0)) return { skip: "non-positive-total" }
+  if (order.status === "canceled") return { skip: "order-canceled" }
+
   const transactionId =
     payment.data?.transaction_id ?? payment.data?.tranID ?? payment.id
   if (!transactionId) return { skip: "missing-transaction-id" }
@@ -140,7 +145,9 @@ export function hasCapturedPayment(order: any): boolean {
 
 /** Orders worth sending: identified, and carrying a captured payment. */
 export function isSyncableOrder(order: any): boolean {
-  return typeof order?.id === "string" && hasCapturedPayment(order)
+  if (typeof order?.id !== "string" || !hasCapturedPayment(order)) return false
+  // Canceled orders are propagated by the cancellation subscriber instead.
+  return order.status !== "canceled"
 }
 
 /** Status endpoint derived from the ingest URL: .../orders -> .../orders/:id/status */

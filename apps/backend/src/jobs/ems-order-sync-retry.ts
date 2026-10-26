@@ -22,7 +22,7 @@ export default async function emsOrderSyncRetry(container: MedusaContainer) {
     entity: "order",
     // order.payment_status is computed and comes back "unknown" from the graph,
     // so capture is read from the payment rows and filtered in code.
-    fields: ["id", "payment_collections.payments.captured_at"],
+    fields: ["id", "status", "payment_collections.payments.captured_at"],
     filters: {
       created_at: { $gte: since.toISOString() },
     },

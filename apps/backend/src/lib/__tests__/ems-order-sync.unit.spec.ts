@@ -62,6 +62,11 @@ describe("buildEmsOrderPayload", () => {
     expect(built.payload.payment.capturedAt).toBe("2026-10-26T10:00:00.000Z")
   })
 
+  it("skips refunded and canceled orders instead of re-ingesting them", () => {
+    expect(buildEmsOrderPayload(order({ total: 0 }))).toEqual({ skip: "non-positive-total" })
+    expect(buildEmsOrderPayload(order({ status: "canceled" }))).toEqual({ skip: "order-canceled" })
+  })
+
   it("skips a payment that has not been captured", () => {
     const built = buildEmsOrderPayload(
       order({
@@ -139,7 +144,8 @@ describe("isSyncableOrder", () => {
     payment_collections: [{ payments: [{ id: "pay_1", captured_at: capturedAt }] }],
   })
 
-  it("requires an id and a captured payment", () => {
+  it("requires an id and a captured payment, and ignores canceled orders", () => {
+    expect(isSyncableOrder({ ...withPayment("2026-10-26T10:00:00.000Z"), status: "canceled" })).toBe(false)
     expect(isSyncableOrder(withPayment("2026-10-26T10:00:00.000Z"))).toBe(true)
     expect(isSyncableOrder(withPayment(undefined))).toBe(false)
     expect(isSyncableOrder({ id: "order_1", payment_status: "captured" })).toBe(false)
